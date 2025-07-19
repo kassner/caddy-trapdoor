@@ -1,0 +1,26 @@
+{
+  admin localhost:2999
+  log {
+    level DEBUG
+  }
+}
+
+(trapdoor) {
+  trapdoor {
+    action 429
+    duration 10s
+    expunger_interval 15s
+
+    match {
+      path /.git/config
+      path /.env
+    }
+  }
+}
+
+:9876 {
+  import trapdoor
+  file_server {
+    root ./www/
+  }
+}
