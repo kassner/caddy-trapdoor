@@ -25,8 +25,9 @@ var bannedIPs = map[string]time.Time{}
 var bannedIPsMutex = sync.RWMutex{}
 
 type Middleware struct {
-	BanAction   int            `json:"action,omitempty"`
-	BanDuration caddy.Duration `json:"duration,omitempty"`
+	BanAction        int            `json:"action,omitempty"`
+	BanDuration      caddy.Duration `json:"duration,omitempty"`
+	ExpungerInterval caddy.Duration `json:"expunger_interval"`
 
 	MatcherSetsRaw []caddy.ModuleMap      `json:"matchers" caddy:"namespace=http.matchers"`
 	MatcherSets    []caddyhttp.MatcherSet `json:"-"`
@@ -66,6 +67,8 @@ func (m *Middleware) Provision(ctx caddy.Context) error {
 		m.MatcherSets = append(m.MatcherSets, ms)
 	}
 
+	go expunger(m.ExpungerInterval, m.logger)
+
 	return nil
 }
 
@@ -77,17 +80,11 @@ func (m Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddy
 	}
 
 	bannedIPsMutex.RLock()
-	v, ok := bannedIPs[ipStr]
+	_, matched := bannedIPs[ipStr]
 	bannedIPsMutex.RUnlock()
 
-	if ok {
-		if v.Compare(time.Now()) != -1 {
-			return caddyhttp.Error(m.BanAction, nil)
-		}
-
-		bannedIPsMutex.Lock()
-		delete(bannedIPs, ipStr)
-		bannedIPsMutex.Unlock()
+	if matched {
+		return caddyhttp.Error(m.BanAction, nil)
 	}
 
 	if requestMatches(m, r) {
@@ -156,6 +153,23 @@ func (m *Middleware) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 				}
 
 				m.BanDuration = caddy.Duration(duration)
+
+			case "expunger_interval":
+				if !d.NextArg() {
+					return d.ArgErr()
+				}
+
+				val := d.Val()
+				if val == "" {
+					return d.Errf("invalid trapdoor.expunger_interval: %s", val)
+				}
+
+				duration, err := caddy.ParseDuration(val)
+				if err != nil {
+					return d.Errf("invalid trapdoor.expunger_interval: %s => %s", val, err)
+				}
+
+				m.ExpungerInterval = caddy.Duration(duration)
 
 			default:
 				return d.Errf("unrecognized subdirective '%s'", d.Val())
