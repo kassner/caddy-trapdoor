@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/caddyserver/caddy/v2"
@@ -21,6 +22,7 @@ func init() {
 }
 
 var bannedIPs = map[string]time.Time{}
+var bannedIPsMutex = sync.RWMutex{}
 
 type Middleware struct {
 	BanAction   int            `json:"action,omitempty"`
@@ -74,16 +76,25 @@ func (m Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddy
 		return caddyhttp.Error(http.StatusInternalServerError, nil)
 	}
 
-	if v, ok := bannedIPs[ipStr]; ok {
+	bannedIPsMutex.RLock()
+	v, ok := bannedIPs[ipStr]
+	bannedIPsMutex.RUnlock()
+
+	if ok {
 		if v.Compare(time.Now()) != -1 {
 			return caddyhttp.Error(m.BanAction, nil)
 		}
 
+		bannedIPsMutex.Lock()
 		delete(bannedIPs, ipStr)
+		bannedIPsMutex.Unlock()
 	}
 
 	if requestMatches(m, r) {
+		bannedIPsMutex.Lock()
 		bannedIPs[ipStr] = time.Now().Add(time.Duration(m.BanDuration))
+		bannedIPsMutex.Unlock()
+
 		return caddyhttp.Error(m.BanAction, nil)
 	}
 
