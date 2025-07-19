@@ -47,6 +47,19 @@ func (Middleware) CaddyModule() caddy.ModuleInfo {
 func (m *Middleware) Provision(ctx caddy.Context) error {
 	m.logger = ctx.Logger(m)
 
+	// defaults
+	if m.BanDuration == 0 {
+		m.BanDuration = caddy.Duration(time.Hour)
+	}
+
+	if m.BanAction == 0 {
+		m.BanAction = 403
+	}
+
+	if m.ExpungerInterval == 0 {
+		m.ExpungerInterval = caddy.Duration(time.Minute * 5)
+	}
+
 	matcherSets, _ := ctx.LoadModule(m, "MatcherSetsRaw")
 	for _, modMap := range matcherSets.([]map[string]any) {
 		var ms caddyhttp.MatcherSet

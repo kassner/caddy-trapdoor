@@ -10,15 +10,17 @@ xcaddy build --with github.com/kassner/caddy-trapdoor
 
 ## Configuration
 
-- `action`: defines which HTTP status code to return;
-- `duration`: defines for how long **ANY** request from an infringing client will be blocked;
+- `action` (default: `403`): defines which HTTP status code to return;
+- `duration` (default: `1h`): defines for how long **ANY** request from an infringing client will be blocked;
 - `match`: defines how to match an infringing client. It accepts any [standard matcher](https://caddyserver.com/docs/caddyfile/matchers#standard-matchers);
+- `expunger_interval` (default: `5m`): defines how often the expunger runs;
 
 ```Caddyfile
 (trapdoor) {
   trapdoor {
     action 429
     duration 1h
+    expunger_interval 5m
     match {
       path /.aws/config
       path /.aws/credentials
