@@ -24,15 +24,19 @@ func init() {
 var bannedIPs = map[string]time.Time{}
 var bannedIPsMutex = sync.RWMutex{}
 
+// Once an IP address is matched, any subsequent request will be denied with `action` for the next `duration`.
 type Middleware struct {
-	BanAction        int            `json:"action,omitempty"`
-	BanDuration      caddy.Duration `json:"duration,omitempty"`
+	// HTTP response status code applied to all requests from an infringing client
+	BanAction int `json:"action,omitempty"`
+	// For how long *any* request from an infringing client will be blocked
+	BanDuration caddy.Duration `json:"duration,omitempty"`
+	// How often to run the cleanup cronjob
 	ExpungerInterval caddy.Duration `json:"expunger_interval"`
+	// How to match an infringing client
+	MatcherSetsRaw []caddy.ModuleMap `json:"matchers" caddy:"namespace=http.matchers"`
 
-	MatcherSetsRaw []caddy.ModuleMap      `json:"matchers" caddy:"namespace=http.matchers"`
-	MatcherSets    []caddyhttp.MatcherSet `json:"-"`
-
-	logger *zap.Logger
+	MatcherSets []caddyhttp.MatcherSet `json:"-"`
+	logger      *zap.Logger
 }
 
 func (Middleware) CaddyModule() caddy.ModuleInfo {
