@@ -1,4 +1,4 @@
-module github.com/evoandroidevo/caddy-trapdoor
+module github.com/kassner/caddy-trapdoor
 
 go 1.24.4
 
