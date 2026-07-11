@@ -90,7 +90,8 @@ func (m *Middleware) Provision(ctx caddy.Context) error {
 }
 
 func (m Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	ipStr, ok := caddyhttp.GetVar(r.Context(), caddyhttp.ClientIPVarKey).(string)
+	ipVar := caddyhttp.GetVar(r.Context(), caddyhttp.ClientIPVarKey)
+	ipStr, ok := ipVar.(string)
 	if !ok || ipStr == "" {
 		var err error
 		ipStr, _, err = net.SplitHostPort(r.RemoteAddr)
