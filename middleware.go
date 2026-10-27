@@ -90,10 +90,15 @@ func (m *Middleware) Provision(ctx caddy.Context) error {
 }
 
 func (m Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	ipStr, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		m.logger.Sugar().Errorf("net.SplitHostPort(%s) failed: %s", r.RemoteAddr, err.Error())
-		return caddyhttp.Error(http.StatusInternalServerError, nil)
+	ipVar := caddyhttp.GetVar(r.Context(), caddyhttp.ClientIPVarKey)
+	ipStr, ok := ipVar.(string)
+	if !ok || ipStr == "" {
+		var err error
+		ipStr, _, err = net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			m.logger.Sugar().Errorf("net.SplitHostPort(%s) failed: %s", r.RemoteAddr, err.Error())
+			return caddyhttp.Error(http.StatusInternalServerError, nil)
+		}
 	}
 
 	bannedIPsMutex.RLock()
